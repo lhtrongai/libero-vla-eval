@@ -1,0 +1,22 @@
+# Model checkpoints and caches
+*.safetensors
+*.bin
+*.pt
+*.pth
+hf_cache/
+.cache/
+
+# Rollout outputs (large)
+*.mp4
+*.gif
+rollouts/
+outputs/
+
+# Python / Jupyter
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Secrets
+.env
+*token*
