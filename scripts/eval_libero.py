@@ -1,6 +1,6 @@
 """Evaluate OpenVLA-7B on one LIBERO suite, following openvla/experiments/robot/libero/run_libero_eval.py.
 Writes one JSON line per episode to episodes.jsonl; re-running the same command skips tasks already completed.
-Verified 27/9: libero_spatial, inits 0-19, mujoco 3.3.7 -> 161/200 = 80.5% (paper: 84.7%)."""
+Verified 2026-09-27: libero_spatial, inits 0-19, MuJoCo 3.3.7 -> 161/200 = 80.5% (paper: 84.7%)."""
 import os, sys, time, json, random, argparse, traceback, warnings
 os.environ["MUJOCO_GL"] = "egl"
 os.environ["LIBERO_CONFIG_PATH"] = "/workspace/.libero"
@@ -15,7 +15,7 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--suite", default="libero_spatial")
 ap.add_argument("--init_start", type=int, default=0)
 ap.add_argument("--init_end", type=int, default=20)      # exclusive
-ap.add_argument("--out", default="/workspace/runs/g1_spatial")
+ap.add_argument("--out", default="/workspace/runs/libero_spatial")
 args = ap.parse_args()
 
 import numpy as np
@@ -37,7 +37,7 @@ SEED = 7
 DEVICE = torch.device("cuda:0")
 CKPT = f"openvla/openvla-7b-finetuned-{args.suite.replace('_', '-')}"
 
-# ---------- Copied from openvla/experiments/robot (same as the verified smoke cell) ----------
+# ---------- Copied from openvla/experiments/robot (same code as the verified 10-episode smoke test) ----------
 def set_seed_everywhere(seed):
     torch.manual_seed(seed); torch.cuda.manual_seed_all(seed)
     np.random.seed(seed); random.seed(seed)
