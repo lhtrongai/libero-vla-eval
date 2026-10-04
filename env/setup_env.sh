@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==== Environment setup: run once per new pod, then Restart Kernel ====
-# Installs exact versions from the lock file captured on 27/9 (G1 passed: LIBERO-Spatial 80.5% on mujoco 3.3.7).
+# Installs exact versions from the lock file captured on 2026-09-27, after the reproduction check passed: OpenVLA-7B LIBERO-Spatial 80.5% (161/200) on MuJoCo 3.3.7.
 set -e
 export DEBIAN_FRONTEND=noninteractive PIP_ROOT_USER_ACTION=ignore TF_CPP_MIN_LOG_LEVEL=3
 LOCK=/workspace/env/requirements-lock.txt
@@ -22,7 +22,7 @@ root = os.path.dirname(importlib.util.find_spec("robosuite").origin)
 bc = open(os.path.join(root, "controllers/base_controller.py"), newline="").read()
 assert "mujoco.mj_fullM(self.sim.model._model, mass_matrix, self.sim.data.qM)" in bc, "mj_fullM call was modified - STOP and report"
 
-# two harmless robosuite 1.4.1 patches kept from week 7
+# two harmless robosuite 1.4.1 patches carried over from the earlier rollout notebook
 patches = {
     "controllers/base_controller.py": [
         ('mass_matrix = np.ndarray(shape=(self.sim.model.nv, self.sim.model.nv), dtype=np.float64, order="C")',
