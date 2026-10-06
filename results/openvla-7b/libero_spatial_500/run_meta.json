@@ -1,0 +1,33 @@
+{
+  "argv": [
+    "--model_family",
+    "openvla",
+    "--pretrained_checkpoint",
+    "openvla/openvla-7b-finetuned-libero-spatial",
+    "--task_suite_name",
+    "libero_spatial",
+    "--center_crop",
+    "True",
+    "--num_trials_per_task",
+    "50",
+    "--seed",
+    "7"
+  ],
+  "suite": "libero_spatial",
+  "checkpoint": "openvla/openvla-7b-finetuned-libero-spatial",
+  "seed": "7",
+  "attn_implementation": "sdpa",
+  "openvla_commit": "c8f03f48af692657d3060c19588038c7220e9af9",
+  "versions": {
+    "torch": "2.8.0+cu128",
+    "transformers": "4.40.1",
+    "mujoco": "3.3.7",
+    "robosuite": "1.4.1",
+    "numpy": "1.26.4"
+  },
+  "gpu": "NVIDIA RTX PRO 4500 Blackwell",
+  "host": "738eb8acf18b",
+  "runpod_pod_id": "p9egf63otl2arp",
+  "start_time": "2026-10-06 06:26:39",
+  "checkpoint_snapshot": "/workspace/hf_cache/hub/models--openvla--openvla-7b-finetuned-libero-spatial/snapshots/962318cec55ac10993ff0f5f43eda9a270b4c873"
+}
