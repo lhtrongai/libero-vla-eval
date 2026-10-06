@@ -3,6 +3,7 @@
 set -e
 mkdir -p ~/.jupyter/lab && cp -r /workspace/.jupyter-settings ~/.jupyter/lab/user-settings
 grep -q prompt.sh ~/.bashrc || echo 'source /workspace/.prompt.sh' >> ~/.bashrc
+grep -q 'TZ=ICT-7' ~/.bashrc || echo 'export TZ=ICT-7' >> ~/.bashrc
 bash /workspace/libero-vla-eval/env/setup_env.sh
 apt-get install -y -qq libmagickwand-dev > /dev/null 2>&1 && echo "[ok] ImageMagick"
 pip install -q Wand "scikit-image<0.25" numpy==1.26.4 && echo "[ok] Wand, scikit-image"
