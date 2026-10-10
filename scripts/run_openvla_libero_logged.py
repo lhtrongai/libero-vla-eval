@@ -6,24 +6,37 @@ save_rollout_video (called once per episode with the success flag). Every episod
 to episodes.jsonl in OUT_DIR. The initial state passed to the environment is checked against
 the LIBERO init file for (task_id, episode_idx), so paired comparisons rest on a verified match.
 
+Each episode record also holds:
+    env_seed - seed of the LIBERO env (the original script uses env.seed(0) once per task).
+    fixtures - body_pos / body_quat of every fixture after the reset (cabinet, stove, wine rack, ...);
+        LIBERO samples them in env.reset() and set_init_state() does not restore them.
+    frame_sha1 - hash of each camera image after the settle steps, i.e. the first frame the policy sees.
+run_meta.json additionally records the LIBERO package in use and the sRGB tag of its floor textures
+(MuJoCo >= 3.3.3 renders tagged textures darker than the look LIBERO's training data was rendered with).
+
+Optional control:
+    ENV_SEED=k  seed the LIBERO env with k instead of 0, right after the original get_libero_env.
+        Only the fixture placement changes; the fixed initial states and the policy stay the same.
+
 Usage: OUT_DIR=/path/to/output python run_openvla_libero_logged.py <run_libero_eval.py arguments>
 """
 import argparse
-import hashlib
 import json
 import os
-import platform
 import subprocess
 import sys
 import time
 
-import numpy as np
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import episode_logging as el  # noqa: E402
 
 OPENVLA_ROOT = os.environ.get("OPENVLA_ROOT", "/workspace/openvla")
 OUT_DIR = os.path.abspath(os.environ["OUT_DIR"])
+ENV_SEED = os.environ.get("ENV_SEED")
 sys.path.insert(0, OPENVLA_ROOT)
 
 import experiments.robot.libero.run_libero_eval as rle  # noqa: E402
+import libero.libero as libero_pkg  # noqa: E402
 from libero.libero import benchmark  # noqa: E402
 
 # The original get_vla() requests flash_attention_2. Force the attention kernel from ATTN_IMPL
@@ -45,12 +58,10 @@ parser = argparse.ArgumentParser(add_help=False)
 parser.add_argument("--task_suite_name", default="libero_spatial")
 parser.add_argument("--pretrained_checkpoint", default="")
 parser.add_argument("--seed", default="7")
+parser.add_argument("--num_steps_wait", type=int, default=10)
 args, _ = parser.parse_known_args()
 suite = benchmark.get_benchmark_dict()[args.task_suite_name]()
-
-
-def state_hash(state):
-    return hashlib.sha1(np.ascontiguousarray(np.asarray(state, dtype=np.float64)).tobytes()).hexdigest()
+state_hash = el.state_hash
 
 
 class Tracker:
@@ -60,13 +71,16 @@ class Tracker:
     init_hash = None
     steps = 0
     t0 = None
+    env_seed = 0
+    fixtures = None
+    frame_sha1 = None
 
 
 T = Tracker()
 
 
 class EnvRecorder:
-    """Thin proxy around the LIBERO env: records the initial state and counts env steps."""
+    """Thin proxy around the LIBERO env: records the initial state, fixture poses and first frame, counts steps."""
 
     def __init__(self, env):
         self._env = env
@@ -81,11 +95,19 @@ class EnvRecorder:
         assert T.init_hash == expected, f"Initial state mismatch at task {T.task_id}, episode {T.episode_idx}"
         T.steps = 0
         T.t0 = time.time()
-        return self._env.set_init_state(state)
+        T.frame_sha1 = None
+        obs = self._env.set_init_state(state)
+        T.fixtures = el.fixture_poses(self._env.env)  # placed by the env.reset() just before this call
+        return obs
 
     def step(self, action):
         T.steps += 1
-        return self._env.step(action)
+        out = self._env.step(action)
+        if T.steps == args.num_steps_wait:  # last settle step: its observation is the policy's first input
+            obs = out[0]
+            T.frame_sha1 = el.frame_hashes({k: obs[k] for k in ("agentview_image", "robot0_eye_in_hand_image")
+                                            if k in obs})
+        return out
 
 
 _original_get_libero_env = rle.get_libero_env
@@ -97,7 +119,10 @@ def get_libero_env(task, *a, **kw):
     T.episode_idx = -1
     assert task.name == suite.get_task(T.task_id).name, f"Task order mismatch at task {T.task_id}"
     T.expected_states = suite.get_task_init_states(T.task_id)
-    env, task_description = _original_get_libero_env(task, *a, **kw)
+    env, task_description = _original_get_libero_env(task, *a, **kw)  # calls env.seed(0)
+    if ENV_SEED is not None:
+        env.seed(int(ENV_SEED))  # replaces the seed before any reset, so only the fixture draws change
+    T.env_seed = int(ENV_SEED) if ENV_SEED is not None else 0
     return EnvRecorder(env), task_description
 
 
@@ -112,6 +137,9 @@ def save_rollout_video(rollout_images, idx, success, task_description, log_file=
         "env_steps": T.steps,
         "wall_time_s": round(time.time() - T.t0, 2),
         "global_episode": idx,
+        "env_seed": T.env_seed,
+        "fixtures": T.fixtures,
+        "frame_sha1": T.frame_sha1,
     }
     EPISODES.write(json.dumps(record) + "\n")
     EPISODES.flush()
@@ -119,25 +147,21 @@ def save_rollout_video(rollout_images, idx, success, task_description, log_file=
 
 
 def run_metadata():
-    import mujoco
-    import robosuite
-    import torch
-    import transformers
-
+    libero_dir = os.path.dirname(os.path.abspath(libero_pkg.__file__))
     meta = {
         "argv": sys.argv[1:],
         "suite": args.task_suite_name,
         "checkpoint": args.pretrained_checkpoint,
         "seed": args.seed,
+        "env_seed": int(ENV_SEED) if ENV_SEED is not None else 0,
         "attn_implementation": ATTN_IMPL,
         "openvla_commit": subprocess.run(["git", "-C", OPENVLA_ROOT, "rev-parse", "HEAD"],
                                          capture_output=True, text=True).stdout.strip(),
-        "versions": {"torch": torch.__version__, "transformers": transformers.__version__,
-                     "mujoco": mujoco.__version__, "robosuite": robosuite.__version__, "numpy": np.__version__},
-        "gpu": torch.cuda.get_device_name(0) if torch.cuda.is_available() else None,
-        "host": platform.node(),
-        "runpod_pod_id": os.environ.get("RUNPOD_POD_ID"),
+        "versions": el.versions(),
+        "libero_package": libero_dir,
+        "textures": el.texture_state(os.path.join(libero_dir, "assets")),
         "start_time": time.strftime("%Y-%m-%d %H:%M:%S"),
+        **{k: v for k, v in el.host_info().items() if k != "time"},
     }
     try:
         from huggingface_hub import snapshot_download
