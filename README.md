@@ -1,4 +1,4 @@
-﻿# libero-vla-eval
+# libero-vla-eval
 Evaluation harness for Vision-Language-Action (VLA) models on the LIBERO benchmark.
 ## What it does
 - Runs a VLA policy closed-loop in LIBERO and reports the success rate with a Wilson 95% confidence interval.
@@ -31,6 +31,8 @@ OUT_DIR=/workspace/runs/openvla_spatial python scripts/run_openvla_libero_logged
   --task_suite_name libero_spatial --center_crop True --num_trials_per_task 50 --seed 7
 # ENV_SEED=1 moves only the fixtures (the original script seeds the env with 0); init states and policy are unchanged.
 ```
+OpenVLA-OFT, original evaluation script, same record format: `scripts/run_oft_libero_logged.py` (`OUT_DIR=...`, then the OFT script's own arguments).
+Evaluation image steps, one at a time (both runners): `JPEG_ROUNDTRIP=off` skips the JPEG round trip before the Lanczos resize; the crop step is the original `--center_crop False`; `SAVE_POLICY_INPUTS=1` keeps each episode's first policy input as a PNG. `scripts/summarize_pipeline_cells.py REF_DIR CELL_DIR ...` pairs cells with a reference run (Wilson CIs, discordant pairs, exact McNemar, flips per task, input distances).
 LeRobot (`lerobot-eval`, e.g. SmolVLA), one record per reset, one per policy-noise draw, plus run metadata:
 ```bash
 RESET_LOG=/workspace/runs/smolvla_spatial/resets.jsonl python scripts/run_lerobot_libero_logged.py \

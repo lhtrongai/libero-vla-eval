@@ -159,11 +159,33 @@ def gpu_name():
         return None
 
 
+def gpu_driver():
+    try:
+        out = subprocess.run(["nvidia-smi", "--query-gpu=driver_version", "--format=csv,noheader"],
+                             capture_output=True, text=True, timeout=20).stdout.strip()
+        return out.splitlines()[0] if out else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def cpu_model():
+    try:
+        with open("/proc/cpuinfo") as f:
+            for line in f:
+                if line.startswith("model name"):
+                    return line.split(":", 1)[1].strip()
+    except OSError:
+        pass
+    return platform.processor() or None
+
+
 def host_info():
     return {
         "host": platform.node(),
         "runpod_pod_id": os.environ.get("RUNPOD_POD_ID"),
         "gpu": gpu_name(),
+        "gpu_driver": gpu_driver(),
+        "cpu": cpu_model(),
         "mujoco_gl": os.environ.get("MUJOCO_GL"),
         "time": time.strftime("%Y-%m-%d %H:%M:%S"),
     }

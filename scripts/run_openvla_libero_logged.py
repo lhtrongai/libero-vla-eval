@@ -17,6 +17,11 @@ run_meta.json additionally records the LIBERO package in use and the sRGB tag of
 Optional control:
     ENV_SEED=k  seed the LIBERO env with k instead of 0, right after the original get_libero_env.
         Only the fixture placement changes; the fixed initial states and the policy stay the same.
+    JPEG_ROUNDTRIP=off  skip the JPEG encode/decode before the resize (see image_pipeline.py).
+        The crop step is switched with the original script's own flag, --center_crop False.
+    SAVE_POLICY_INPUTS=1  save each episode's first policy input image (before the crop step) as a PNG.
+Each episode record holds jpeg_input_mad: the mean absolute difference between the first input image with and
+without the JPEG round trip, so the size of that input change is known for every episode.
 
 Usage: OUT_DIR=/path/to/output python run_openvla_libero_logged.py <run_libero_eval.py arguments>
 """
@@ -29,6 +34,7 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import episode_logging as el  # noqa: E402
+import image_pipeline as ip  # noqa: E402
 
 OPENVLA_ROOT = os.environ.get("OPENVLA_ROOT", "/workspace/openvla")
 OUT_DIR = os.path.abspath(os.environ["OUT_DIR"])
@@ -59,6 +65,7 @@ parser.add_argument("--task_suite_name", default="libero_spatial")
 parser.add_argument("--pretrained_checkpoint", default="")
 parser.add_argument("--seed", default="7")
 parser.add_argument("--num_steps_wait", type=int, default=10)
+parser.add_argument("--center_crop", default="True")
 args, _ = parser.parse_known_args()
 suite = benchmark.get_benchmark_dict()[args.task_suite_name]()
 state_hash = el.state_hash
@@ -74,6 +81,9 @@ class Tracker:
     env_seed = 0
     fixtures = None
     frame_sha1 = None
+    first_input_pending = False
+    jpeg_input_mad = None
+    policy_input_png = None
 
 
 T = Tracker()
@@ -96,6 +106,9 @@ class EnvRecorder:
         T.steps = 0
         T.t0 = time.time()
         T.frame_sha1 = None
+        T.first_input_pending = True
+        T.jpeg_input_mad = None
+        T.policy_input_png = None
         obs = self._env.set_init_state(state)
         T.fixtures = el.fixture_poses(self._env.env)  # placed by the env.reset() just before this call
         return obs
@@ -112,6 +125,24 @@ class EnvRecorder:
 
 _original_get_libero_env = rle.get_libero_env
 _original_save_rollout_video = rle.save_rollout_video
+_original_get_libero_image = rle.get_libero_image
+
+
+def get_libero_image(obs, resize_size):
+    """Official image step, or the same step without the JPEG round trip; records the first input of each episode."""
+    size = (resize_size, resize_size) if isinstance(resize_size, int) else resize_size
+    official = _original_get_libero_image(obs, resize_size) if (ip.JPEG_ROUNDTRIP == "on" or T.first_input_pending) else None
+    no_jpeg = None
+    if ip.JPEG_ROUNDTRIP == "off" or T.first_input_pending:
+        no_jpeg = ip.resize_without_jpeg(obs["agentview_image"][::-1, ::-1], size)  # same 180-degree rotation
+    img = official if ip.JPEG_ROUNDTRIP == "on" else no_jpeg
+    if T.first_input_pending:
+        T.first_input_pending = False
+        T.jpeg_input_mad = ip.mean_abs_diff(official, no_jpeg)
+        if ip.SAVE_POLICY_INPUTS:
+            T.policy_input_png = f"policy_inputs/task{T.task_id:02d}_ep{T.episode_idx:02d}_agentview.png"
+            ip.save_png(os.path.join(OUT_DIR, T.policy_input_png), img)
+    return img
 
 
 def get_libero_env(task, *a, **kw):
@@ -140,6 +171,8 @@ def save_rollout_video(rollout_images, idx, success, task_description, log_file=
         "env_seed": T.env_seed,
         "fixtures": T.fixtures,
         "frame_sha1": T.frame_sha1,
+        "jpeg_input_mad": T.jpeg_input_mad,
+        "policy_input_png": T.policy_input_png,
     }
     EPISODES.write(json.dumps(record) + "\n")
     EPISODES.flush()
@@ -155,9 +188,10 @@ def run_metadata():
         "seed": args.seed,
         "env_seed": int(ENV_SEED) if ENV_SEED is not None else 0,
         "attn_implementation": ATTN_IMPL,
+        "image_pipeline": ip.settings(args.center_crop),
         "openvla_commit": subprocess.run(["git", "-C", OPENVLA_ROOT, "rev-parse", "HEAD"],
                                          capture_output=True, text=True).stdout.strip(),
-        "versions": el.versions(),
+        "versions": el.versions(("tensorflow",)),
         "libero_package": libero_dir,
         "textures": el.texture_state(os.path.join(libero_dir, "assets")),
         "start_time": time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -181,5 +215,6 @@ if __name__ == "__main__":
     EPISODES = open(episodes_path, "a")
     rle.get_libero_env = get_libero_env
     rle.save_rollout_video = save_rollout_video
+    rle.get_libero_image = get_libero_image
     rle.eval_libero()
     EPISODES.close()
