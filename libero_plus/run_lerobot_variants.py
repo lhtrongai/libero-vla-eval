@@ -101,7 +101,59 @@ if not hasattr(libero_pkg, "get_assets_path"):  # hf-libero API used by the logg
     libero_pkg.get_assets_path = lambda: libero_pkg.get_libero_path("assets")
 
 import gymnasium as gym  # noqa: E402
-from scipy.spatial.transform import Rotation  # noqa: E402
+
+
+class Rotation:
+    """Minimal rotation (quaternion x, y, z, w as robosuite reports it) in plain numpy.
+
+    Kept free of scipy on purpose: the LeRobot environment on the pod takes numpy 1.26 from the system while
+    its own scipy needs numpy 2, so importing scipy.spatial there fails."""
+
+    def __init__(self, matrix):
+        self._m = np.asarray(matrix, dtype=np.float64)
+
+    @classmethod
+    def from_quat(cls, q):
+        x, y, z, w = np.asarray(q, dtype=np.float64) / np.linalg.norm(q)
+        return cls(np.array([
+            [1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)],
+            [2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)],
+            [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)]]))
+
+    def inv(self):
+        return Rotation(self._m.T)
+
+    def __mul__(self, other):
+        return Rotation(self._m @ other._m)
+
+    def as_matrix(self):
+        return self._m.copy()
+
+    def as_quat(self):
+        m = self._m
+        t = np.trace(m)
+        if t > 0:
+            s = 2.0 * np.sqrt(t + 1.0)
+            q = [(m[2, 1] - m[1, 2]) / s, (m[0, 2] - m[2, 0]) / s, (m[1, 0] - m[0, 1]) / s, 0.25 * s]
+        else:
+            i = int(np.argmax(np.diag(m)))
+            j, k = (i + 1) % 3, (i + 2) % 3
+            s = 2.0 * np.sqrt(1.0 + m[i, i] - m[j, j] - m[k, k])
+            q = [0.0, 0.0, 0.0, (m[k, j] - m[j, k]) / s]
+            q[i] = 0.25 * s
+            q[j] = (m[j, i] + m[i, j]) / s
+            q[k] = (m[k, i] + m[i, k]) / s
+        q = np.array(q)
+        return q if q[3] >= 0 else -q
+
+    def as_rotvec(self):
+        x, y, z, w = self.as_quat()
+        v = np.array([x, y, z])
+        n = np.linalg.norm(v)
+        if n < 1e-12:
+            return 2.0 * v
+        return v / n * 2.0 * np.arctan2(n, w)
+
 
 import lerobot.envs.libero as libero_env  # noqa: E402
 from lerobot.envs.utils import NEW_ROLLOUT_OPTION, FreezeAfterEpisodeEnd  # noqa: E402
