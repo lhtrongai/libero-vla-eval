@@ -1,0 +1,79 @@
+{
+  "argv": [
+    "--policy.path=HuggingFaceVLA/smolvla_libero",
+    "--env.type=libero",
+    "--env.task=libero_object",
+    "--eval.n_episodes=50",
+    "--eval.batch_size=50",
+    "--eval.use_async_envs=false",
+    "--seed=1000",
+    "--output_dir=/workspace/runs/object_linear_smolvla_a1_500/eval"
+  ],
+  "start": {
+    "host": "134060dd59a6",
+    "runpod_pod_id": "w4hff9yshrvh55",
+    "gpu": "NVIDIA RTX PRO 4500 Blackwell",
+    "mujoco_gl": "egl",
+    "time": "2026-10-11 17:29:52"
+  },
+  "versions": {
+    "torch": "2.8.0+cu128",
+    "mujoco": "3.3.7",
+    "robosuite": "1.4.0",
+    "numpy": "2.2.6",
+    "gymnasium": "1.4.0",
+    "transformers": "5.5.4"
+  },
+  "packages": {
+    "lerobot": "0.6.2",
+    "hf-libero": "0.1.4",
+    "huggingface-hub": "1.33.0"
+  },
+  "lerobot": {
+    "path": "/workspace/lerobot/src/lerobot",
+    "commit": "8c920c4270460851cedd2737657584586d3dc66f",
+    "uncommitted_changes": false
+  },
+  "libero_package": "/workspace/venvs/lerobot/lib/python3.12/site-packages/libero/libero",
+  "textures": {
+    "assets_dir": "/root/.cache/libero/assets-linear",
+    "files": {
+      "textures/light-gray-floor-tile.png": {
+        "sha1": "18d7fafc8039c66cf8d6f97d5253312b3dc49c24",
+        "srgb_tag": false
+      },
+      "textures/tile_grigia_caldera_porcelain_floor.png": {
+        "sha1": "18d7fafc8039c66cf8d6f97d5253312b3dc49c24",
+        "srgb_tag": false
+      },
+      "stable_hope_objects/salad_dressing/texture_map.png": {
+        "sha1": "5300cb4f97e8031e5314aee4941c5e111eaa0658",
+        "srgb_tag": false
+      },
+      "stable_hope_objects/new_salad_dressing/texture_map.png": {
+        "sha1": "5300cb4f97e8031e5314aee4941c5e111eaa0658",
+        "srgb_tag": false
+      }
+    },
+    "srgb_tagged_files": 0
+  },
+  "seed": "1000",
+  "scene_seed_shift": 0,
+  "logs": {
+    "resets": "/workspace/runs/object_linear_smolvla_a1_500/resets.jsonl",
+    "noise": "/workspace/runs/object_linear_smolvla_a1_500/resets_noise.jsonl"
+  },
+  "end": "2026-10-11 19:16:29",
+  "counts": {
+    "explicit": 500,
+    "autoreset": 560,
+    "noise_calls": 2800,
+    "batches": 10
+  },
+  "policy": {
+    "path": "HuggingFaceVLA/smolvla_libero",
+    "revision": "6721902bc4d61e50a3bfdb11dfb4cb626f05d102",
+    "local_dir": "/workspace/hf_cache/hub/models--HuggingFaceVLA--smolvla_libero/snapshots/6721902bc4d61e50a3bfdb11dfb4cb626f05d102",
+    "model_sha1": "014100e1fd337fd39d2d54b73e2ea81ffecb26d3"
+  }
+}

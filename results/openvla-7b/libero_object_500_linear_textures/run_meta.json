@@ -1,0 +1,59 @@
+{
+  "argv": [
+    "--model_family",
+    "openvla",
+    "--pretrained_checkpoint",
+    "openvla/openvla-7b-finetuned-libero-object",
+    "--task_suite_name",
+    "libero_object",
+    "--center_crop",
+    "True",
+    "--num_trials_per_task",
+    "50",
+    "--seed",
+    "7"
+  ],
+  "suite": "libero_object",
+  "checkpoint": "openvla/openvla-7b-finetuned-libero-object",
+  "seed": "7",
+  "env_seed": 0,
+  "attn_implementation": "sdpa",
+  "openvla_commit": "c8f03f48af692657d3060c19588038c7220e9af9",
+  "versions": {
+    "torch": "2.8.0+cu128",
+    "mujoco": "3.3.7",
+    "robosuite": "1.4.1",
+    "numpy": "1.26.4",
+    "gymnasium": null,
+    "transformers": "4.40.1"
+  },
+  "libero_package": "/workspace/LIBERO-linear/libero/libero",
+  "textures": {
+    "assets_dir": "/workspace/LIBERO-linear/libero/libero/assets",
+    "files": {
+      "textures/light-gray-floor-tile.png": {
+        "sha1": "18d7fafc8039c66cf8d6f97d5253312b3dc49c24",
+        "srgb_tag": false
+      },
+      "textures/tile_grigia_caldera_porcelain_floor.png": {
+        "sha1": "18d7fafc8039c66cf8d6f97d5253312b3dc49c24",
+        "srgb_tag": false
+      },
+      "stable_hope_objects/salad_dressing/texture_map.png": {
+        "sha1": "5300cb4f97e8031e5314aee4941c5e111eaa0658",
+        "srgb_tag": false
+      },
+      "stable_hope_objects/new_salad_dressing/texture_map.png": {
+        "sha1": "5300cb4f97e8031e5314aee4941c5e111eaa0658",
+        "srgb_tag": false
+      }
+    },
+    "srgb_tagged_files": 0
+  },
+  "start_time": "2026-10-11 19:34:43",
+  "host": "fc8973662304",
+  "runpod_pod_id": "ixp1iphk0blbk3",
+  "gpu": "NVIDIA RTX PRO 4500 Blackwell",
+  "mujoco_gl": "egl",
+  "checkpoint_snapshot": "/workspace/hf_cache/hub/models--openvla--openvla-7b-finetuned-libero-object/snapshots/287d6cfdf12d07b1449505f66d9bf3550257e9b3"
+}
